@@ -1,7 +1,7 @@
 #' Create a pp module.
 #'
 #' @param ... Any object the module should contain.
-#' @param subclass A character value. If `NULL, the module will have class 'pp'.
+#' @param subclass A character value. If `NULL`, the module will have class 'pp'.
 #'   If not `NULL`, the module will have subclass of 'pp'.
 pp <- function(..., subclass = NULL) {
   object <- list(...)

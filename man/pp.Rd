@@ -9,7 +9,7 @@ pp(..., subclass = NULL)
 \arguments{
 \item{...}{Any object the module should contain.}
 
-\item{subclass}{A character value. If `NULL, the module will have class 'pp'.
+\item{subclass}{A character value. If `NULL`, the module will have class 'pp'.
 If not `NULL`, the module will have subclass of 'pp'.}
 }
 \description{
