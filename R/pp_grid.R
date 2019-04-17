@@ -12,7 +12,6 @@ pp_grid <- function(..., data, default = pp(), type = "grid") {
     stop("`default` must be a pp object.")
   }
   n <- length(args <- list(...))
-  data <- predict(default, data)
   if (type == "switch") {
     idx_list <- 1:n
   } else if (type == "step") {
@@ -22,7 +21,7 @@ pp_grid <- function(..., data, default = pp(), type = "grid") {
   }
   object <- lapply(
     idx_list,
-    function(idx) pp_sequential(pplist = args[idx], data = data)
+    function(idx) pp_sequential(default, pplist = args[idx], data = data)
   )
   class(object) <- "pp_grid"
   object
