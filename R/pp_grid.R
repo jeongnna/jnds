@@ -22,7 +22,7 @@ pp_grid <- function(..., data, default = pp(), type = "grid") {
   }
   object <- lapply(
     idx_list,
-    function(idx) pp_sequential(default, pplist = args[idx], data = data)
+    function(idx) pp_sequential(pplist = args[idx], data = data)
   )
   class(object) <- "pp_grid"
   object
