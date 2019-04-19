@@ -1,10 +1,10 @@
 randomforest <- function(x, y, params) {
-  require(randomForest)
-  
-  set.seed(params$seed)
+  if (!is.null(params$seed)) {
+    set.seed(params$seed)
+  }
   randomForest::randomForest(
     y ~ ., data = x,
-    ntree = params$n_trees
+    ntree = params$n_iters
   )
 }
 

@@ -1,9 +1,5 @@
 lasso <- function(x, y, params) {
-  require(glmnet)
-  
-  if (is.null(params$alpha)) {
-    params$alpha <- 1
-  }
+  if (is.null(params$alpha)) params$alpha <- 1
   
   x_mat <- model.matrix(y ~ ., data = x)
   glmnet::glmnet(
@@ -25,11 +21,7 @@ model_predict.glmnet <- function(object, newdata, params) {
 
 
 cv_lasso <- function(x, y, params) {
-  require(glmnet)
-  
-  if (is.null(params$alpha)) {
-    params$alpha <- 1
-  }
+  if (is.null(params$alpha)) params$alpha <- 1
   
   x_mat <- model.matrix(y ~ ., data = x)
   glmnet::cv.glmnet(
@@ -41,9 +33,7 @@ cv_lasso <- function(x, y, params) {
 
 
 model_predict.cv.glmnet <- function(object, newdata, params) {
-  if (is.null(params$lambda)) {
-    params$lambda <- object$lambda.min
-  }
+  if (is.null(params$lambda)) params$lambda <- object$lambda.min
   
   newdata_mat <- model.matrix(~ ., data = newdata)
   predict(
