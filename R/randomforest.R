@@ -1,4 +1,6 @@
-randomforest <- function(x, y, params) {
+randomforest <- function(x, y, params = list(), x_val = NULL, y_val = NULL) {
+  if (is.null(params$n_iters)) params$n_iters <- 200
+  
   if (!is.null(params$seed)) {
     set.seed(params$seed)
   }
@@ -9,7 +11,7 @@ randomforest <- function(x, y, params) {
 }
 
 
-model_predict.randomForest <- function(object, newdata, params) {
+model_predict.randomForest <- function(object, newdata, params = list()) {
   if (is.null(params$predict_type)) {
     if (object$type == "regression") {
       params$predict_type <- "response"

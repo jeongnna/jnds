@@ -1,4 +1,4 @@
-lasso <- function(x, y, params) {
+lasso <- function(x, y, params = list(), x_val = NULL, y_val = NULL) {
   if (is.null(params$alpha)) params$alpha <- 1
   
   x_mat <- model.matrix(y ~ ., data = x)
@@ -11,7 +11,7 @@ lasso <- function(x, y, params) {
 }
 
 
-model_predict.glmnet <- function(object, newdata, params) {
+model_predict.glmnet <- function(object, newdata, params = list()) {
   newdata_mat <- model.matrix(~ ., data = newdata)
   predict(
     object, newdata_mat,
@@ -20,7 +20,7 @@ model_predict.glmnet <- function(object, newdata, params) {
 }
 
 
-cv_lasso <- function(x, y, params) {
+cv_lasso <- function(x, y, params = list(), x_val = NULL, y_val = NULL) {
   if (is.null(params$alpha)) params$alpha <- 1
   
   x_mat <- model.matrix(y ~ ., data = x)
@@ -32,7 +32,7 @@ cv_lasso <- function(x, y, params) {
 }
 
 
-model_predict.cv.glmnet <- function(object, newdata, params) {
+model_predict.cv.glmnet <- function(object, newdata, params = list()) {
   if (is.null(params$lambda)) params$lambda <- object$lambda.min
   
   newdata_mat <- model.matrix(~ ., data = newdata)

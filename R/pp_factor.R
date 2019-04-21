@@ -1,6 +1,6 @@
 #' Create a pp module which converts columns to factor.
 #'
-#' @param cols A character vector. Specify the names of features to convert.
+#' @param cols Names of features to convert.
 #' @param desc (optional) Description of the module.
 pp_factor <- function(cols = NULL, desc = NULL, data = NULL, standby = TRUE) {
   if (standby) {

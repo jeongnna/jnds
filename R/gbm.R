@@ -1,4 +1,11 @@
-gbm <- function(x, y, params) {
+gbm <- function(x, y, params = list(), x_val = NULL, y_val = NULL) {
+  if (is.null(params$dist)) {
+    if (is.numeric(y)) {
+      params$dist <- "gaussian"
+    } else {
+      params$dist <- "bernoulli"
+    }
+  }
   if (is.null(params$n_iters)) params$n_iters <- 100
   if (is.null(params$depth)) params$depth <- 1
   if (is.null(params$min_child)) params$min_child <- 10
@@ -20,10 +27,11 @@ gbm <- function(x, y, params) {
 }
 
 
-model_predict.gbm <- function(object, newdata, params) {
+model_predict.gbm <- function(object, newdata, params = list()) {
   pred <- predict(
     object, newdata,
     n.trees = params$n_iters
   )
-  pred[, , 1]
+  # pred[, , 1]
+  pred
 }
