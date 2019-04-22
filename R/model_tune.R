@@ -13,51 +13,77 @@ eachpar_idx_ <- function(idx, n_case, n_par) {
 }
 
 
-model_tune <- function(params, num_search, data_list,
-                       model, loss_fn, more_params = NULL,
-                       max_iters = 5, n_cores = 1, seed = 0) {
-
-  # 초기화
-  if (is.null(more_params)) {
-    more_params <- list()
-  }
+model_tune <- function(params, n_search, data_list,
+                       model, loss_fn, more_params = list(),
+                       max_iters = 1, n_cores = 1, seed = 0,
+                       early_stop_rate = 0.01) {
+  # initialize
   for (k in seq_along(params)) {
     if (is.null(params[[k]]$expand)) {
-      params[[k]]$expand <- 0.5
+      message(str_c("`expand` is null in ", params[[k]]$name, ". `FALSE` is used as default."))
+      params[[k]]$expand <- FALSE
+    }
+    if (is.null(params[[k]]$power)) {
+      message(str_c("`power` is null in ", params[[k]]$name, ". `TRUE` is used as default."))
+      params[[k]]$power <- TRUE
+    }
+    if (is.null(params[[k]]$search_type)) {
+      message(str_c("`search_type` is null in ", params[[k]]$name, ". \"random\" is used as default."))
+      params[[k]]$search_type <- "random"
+    }
+    if (is.null(params[[k]]$dtype)) {
+      message(str_c("`dtype` is null in ", params[[k]]$name, ". \"float\" is used as default."))
+      params[[k]]$dtype <- "float"
     }
   }
 
-  history <- list(case_grid = list(), best_case = list())
+  history <- list()
   prev_best_params <- rep(0, length(params))
+  y_val_full <- unlist(map(data_list, "y_val"))
 
-  # 파라미터 튜닝
+  # tune parameters
   for (iter in seq_len(max_iters)) {
     cat(iter, "th tuning\n", sep = "")
 
-    # 새로운 파라미터 서치
-    cat("search range:\n")
+    # create parameter grid
+    cat("search range (in before-power scale) :\n")
     for (k in seq_along(params)) {
-      range <- params[[k]]$range
       set.seed(seed)
-      cand <- sort(runif(num_search, range[1], range[2]))
-      params[[k]]$cand <- cand
-      params[[k]]$cand_pow <- 10^cand
+      range <- params[[k]]$range
+      if (params[[k]]$search_type == "grid") {
+        params[[k]]$cand <- seq(range[1], range[2], length.out = n_search)
+      } else if (params[[k]]$search_type == "random") {
+        params[[k]]$cand <- sort(runif(n_search, range[1], range[2]))
+      }
+      
+      if (params[[k]]$power) {
+        params[[k]]$cand_pow <- 10^params[[k]]$cand
+      } else {
+        params[[k]]$cand_pow <- params[[k]]$cand
+      }
+      if (params[[k]]$dtype == "integer") {
+        params[[k]]$cand_pow <- floor(params[[k]]$cand_pow)
+        if (params[[k]]$power) {
+          params[[k]]$cand <- log10(params[[k]]$cand_pow)
+        } else {
+          params[[k]]$cand <- params[[k]]$cand_pow
+        }
+      }
+      
       cat("    ", params[[k]]$name, ": (", range[1], ", ", range[2], ")\n", sep = "")
       seed <- seed + 1
     }
 
-    # 파라미터별 loss 계산
+    # loss for each parameter
     params_grid <- expand_grid(transpose(params)$cand_pow)
     names(params_grid) <- unlist(transpose(params)$name)
-
     process_ <- function(i) {
       all_params <- more_params
       for (k in seq_along(params)) {
-        all_params[[params[[k]]$name]] <- params_grid[[k]][i]
+        all_params[[params[[k]]$name]] <- pull(params_grid[i, k])
       }
       pred <- NULL
-      for (fold in seq_along(data_list)) {
-        data <- data_list[[fold]]
+      for (data in data_list) {
         x_train <- data$x_train
         y_train <- data$y_train
         x_val <- data$x_val
@@ -65,53 +91,56 @@ model_tune <- function(params, num_search, data_list,
         model_fitted <- model(x_train, y_train, all_params, x_val, y_val)
         pred <- c(pred, model_predict(model_fitted, x_val, params = all_params))
       }
-      loss_fn(pred, y_val)
+      loss_fn(pred, y_val_full)
     }
     losses <- unlist(pbmclapply(1:nrow(params_grid), process_, mc.cores = n_cores))
-
+    #########################################################################
+    # losses <- NULL                    # When pbmclapply in the above line #
+    # for (i in 1:nrow(params_grid)) {  # encounters an error, replace with #
+    #   losses[i] <- process_(i)        # this block and then track the     #
+    # }                                 # error point.                      #
+    #########################################################################
+    
+    # find the optimal point
     best <- which.min(losses)
     best_params <- unlist(params_grid[best, ])
-
     cat("best case:\n")
     for (k in seq_along(params)) {
       cat("    ", params[[k]]$name, ": ", best_params[k], "\n", sep = "")
     }
     cat("loss: ", losses[best], "\n\n", sep = "")
 
-    # 히스토리 업데이트
+    # update history
     params_grid <- bind_cols(params_grid, loss = losses)
-    history$case_grid[[iter]] <- params_grid
-    history$best_case[[iter]] <- params_grid[best, ]
+    history[[iter]] <- params_grid
 
-    # 파라미터의 변화가 작으면 종료
-    if (all(abs((best_params - prev_best_params) / best_params) < 0.01)) {
+    # early stop when update is small
+    if (all(abs((best_params - prev_best_params) / best_params) < early_stop_rate)) {
+      message(str_c("Early stopped in iteration ", iter))
       break
     }
     prev_best_params <- best_params
 
-    # 파라미터 범위 업데이트
-    best_eachpar <- eachpar_idx_(best, n_case = num_search, n_par = length(params))
+    # update parameter ranges
+    best_eachpar <- eachpar_idx_(best, n_case = n_search, n_par = length(params))
 
     for (k in seq_along(params)) {
       b <- best_eachpar[k]
       range <- params[[k]]$range
       expand <- params[[k]]$expand
       cand <- params[[k]]$cand
-
-      if (b == 1) {  # 왼쪽 경계일 때
+      # When the optimal point is ...
+      if (b == 1) {                    # (1) left boundary
         next_min <- range[1] - expand * diff(range)
         next_max <- cand[b + 1]
-
-      } else if (b == length(cand)) {  # 오른쪽 경계일 때
+      } else if (b == length(cand)) {  # (2) right boundary
         next_min <- cand[b - 1]
         next_max <- range[2] + expand * diff(range)
-
-      } else {  # 내부점일 때
+      } else {                         # (3) an interior point
         next_min <- cand[b - 1]
         next_max <- cand[b + 1]
         params[[k]]$expand <- FALSE
       }
-
       params[[k]]$range <- c(next_min, next_max)
     }
   }
@@ -120,7 +149,15 @@ model_tune <- function(params, num_search, data_list,
 }
 
 
-vis_tunegrid <- function(grd, par, loss_reduce = c("min", "mean")) {
+best_cases <- function(history) {
+  history %>%
+    map(function(df) df[which.min(df$loss), ]) %>%
+    bind_rows() %>%
+    add_column(iteration = 1:nrow(.), .before = 1)
+}
+
+
+vis_grid <- function(grd, par, loss_reduce = c("min", "mean")) {
   if (!length(par) %in% 1:2) {
     stop("`par` must have length 1 or 2.")
   }

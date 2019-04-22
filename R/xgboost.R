@@ -13,13 +13,12 @@ xgboost <- function(x, y, params = list(), x_val = NULL, y_val = NULL) {
   if (is.null(params$min_split_loss)) params$min_split_loss <- 0
   if (is.null(params$learning_rate)) params$learning_rate <- .3
   if (is.null(params$max_delta_step)) params$max_delta_step <- 0
-  if (is.null(params$n_iters)) params$n_iters <- 100
+  if (is.null(params$n_iters)) params$n_iters <- 200
   if (is.null(params$row_fraction)) params$row_fraction <- 1
   if (is.null(params$col_fraction)) params$col_fraction <- 1
   if (is.null(params$n_cores)) params$n_cores <- 1
   if (is.null(params$print_every_n)) params$print_every_n <- 10
   if (is.null(params$early_stopping_iters)) params$early_stopping_iters <- 10
-  if (is.null(params$watch)) params$watch <- "train"
   
   if (!is.null(params$seed)) {
     set.seed(params$seed)
@@ -32,7 +31,6 @@ xgboost <- function(x, y, params = list(), x_val = NULL, y_val = NULL) {
     dval <- xgb.DMatrix(data = x_mat_val, label = y_val)
     watchlist$val <- dval
   }
-  watchlist <- watchlist[params$watch]
   xgboost::xgb.train(
     params = list(
       objective = params$objective,
